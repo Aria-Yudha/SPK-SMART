@@ -1,0 +1,7 @@
+Nilaiakhir (Tests\App\Controllers\Nilaiakhir)
+ [x] Index for non owner
+ [x] Index for owner
+ [x] Hitung
+ [ ] Hapus semua
+ [ ] Cetak pdf
+
