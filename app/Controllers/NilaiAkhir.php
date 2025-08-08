@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Models\{Nilaiakhirmodel, Utilitymodel, Kriteriamodel, Suppliermodel};
+use App\Models\{Nilaiakhirmodel, Utilitymodel, Kriteriamodel, Suppliermodel, Parametermodel, Penilaianmodel};
 use Dompdf\Dompdf;
 
 class NilaiAkhir extends BaseController
@@ -12,13 +12,20 @@ class NilaiAkhir extends BaseController
     protected $Kriteriamodel;
     protected $Suppliermodel;
 
+    protected $Parametermodel;
+
+    protected $Penilaianmodel;
+
     public function __construct()
-    {
-        $this->Nilaiakhirmodel = new Nilaiakhirmodel();
-        $this->Utilitymodel    = new Utilitymodel();
-        $this->Kriteriamodel   = new Kriteriamodel();
-        $this->Suppliermodel   = new Suppliermodel();
-    }
+{
+    $this->Nilaiakhirmodel = new Nilaiakhirmodel();
+    $this->Utilitymodel    = new Utilitymodel();
+    $this->Kriteriamodel   = new Kriteriamodel();
+    $this->Suppliermodel   = new Suppliermodel();
+    $this->Parametermodel  = new Parametermodel();
+    $this->Penilaianmodel  = new Penilaianmodel();
+}
+
 public function index()
 {
     $role = session()->get('role');
@@ -113,11 +120,6 @@ public function index()
 
     public function hitung()
     {
-        $utilityData = $this->Utilitymodel->findAll();
-    if (empty($utilityData)) {
-        return redirect()->back()->with('error', 'Nilai utility belum dihitung.');
-    }
-
         $this->Nilaiakhirmodel->hapusSemua();
 
         $utility  = $this->Utilitymodel->getUtilityWithDetail();
@@ -150,55 +152,72 @@ public function index()
 
     public function hapussemua()
     {
-        $nilaidata = $this->Nilaiakhirmodel->findAll();
-    if (empty($nilaidata)) {
-        return redirect()->back()->with('error', 'Nilai Akhir belum dihitung.');
-    }
         $this->Nilaiakhirmodel->hapusSemua();
         return redirect()->to('/nilaiakhir')->with('success', 'Semua data nilai akhir berhasil dihapus.');
     }
 
     // ✅ Tambahan: Fungsi cetak PDF
     public function cetakpdf()
-    {
-        require_once ROOTPATH . 'vendor/autoload.php';
+{
+    require_once ROOTPATH . 'vendor/autoload.php';
 
-        $kriteriaList = $this->Kriteriamodel->findAll();
-        $kriteria = [];
-        foreach ($kriteriaList as $k) {
-            $kriteria[$k['id_kriteria']] = $k['nama_kriteria'];
-        }
-
-        $nilaiData = $this->Nilaiakhirmodel->getNilaiAkhirGrouped();
-
-        $rankingData = $nilaiData;
-        usort($rankingData, function($a, $b) {
-            return $b['total'] <=> $a['total'];
-        });
-
-        $rankMap = [];
-        $rank = 1;
-        foreach ($rankingData as $rd) {
-            $rankMap[$rd['id_supplier']] = $rank++;
-        }
-
-        foreach ($nilaiData as &$nd) {
-            $nd['ranking'] = $rankMap[$nd['id_supplier']] ?? null;
-        }
-        unset($nd);
-
-        $data = [
-            'kriteria'    => $kriteria,
-            'nilai_akhir' => $nilaiData,
-            'nama_user'=> session()->get('nama_user')
-        ];
-
-        $dompdf = new Dompdf();
-        $html = view('nilaiakhir/pdf', $data);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
-        $dompdf->stream('Laporan_Nilai_Akhir.pdf', ['Attachment' => true]);
-        exit;
+    $kriteriaList = $this->Kriteriamodel->findAll();
+    $kriteria = [];
+    foreach ($kriteriaList as $k) {
+        $kriteria[$k['id_kriteria']] = $k['nama_kriteria'];
     }
+
+    $nilaiData = $this->Nilaiakhirmodel->getNilaiAkhirGrouped();
+
+    $rankingData = $nilaiData;
+    usort($rankingData, function($a, $b) {
+        return $b['total'] <=> $a['total'];
+    });
+
+    $rankMap = [];
+    $rank = 1;
+    foreach ($rankingData as $rd) {
+        $rankMap[$rd['id_supplier']] = $rank++;
+    }
+
+    foreach ($nilaiData as &$nd) {
+        $nd['ranking'] = $rankMap[$nd['id_supplier']] ?? null;
+    }
+    unset($nd);
+
+    // ✅ Tambahan: Ambil parameter dan penilaian dari supplier terbaik
+    $id_supplier_terbaik = $rankingData[0]['id_supplier'] ?? null;
+    $utility_terbaik     = $this->Utilitymodel->where('id_supplier', $id_supplier_terbaik)->findAll();
+
+    $parameter_terbaik = [];
+    foreach ($utility_terbaik as $u) {
+        $penilaian = $this->Penilaianmodel->find($u['id_penilaian']);
+        if ($penilaian) {
+            $parameter = $this->Parametermodel->find($penilaian['id_parameter']);
+            $kriteriax = $this->Kriteriamodel->find($penilaian['id_kriteria']);
+
+            $parameter_terbaik[] = [
+                'nama_kriteria'  => $kriteriax['nama_kriteria'] ?? '-',
+                'nama_parameter' => $parameter['nama_parameter'] ?? '-',
+                'keterangan'     => $parameter['keterangan'],
+            ];
+        }
+    }
+
+    $data = [
+        'kriteria'           => $kriteria,
+        'nilai_akhir'        => $nilaiData,
+        'nama_user'          => session()->get('nama_user'),
+        'parameter_terbaik'  => $parameter_terbaik, // ✅ tambahan untuk ditampilkan di view
+    ];
+
+    $dompdf = new Dompdf();
+    $html = view('nilaiakhir/pdf', $data);
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'landscape');
+    $dompdf->render();
+    $dompdf->stream('Laporan_Nilai_Akhir.pdf', ['Attachment' => true]);
+    exit;
+}
+
 }
