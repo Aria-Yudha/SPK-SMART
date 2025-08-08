@@ -64,9 +64,25 @@
         </tbody>
     </table>
 
-    <?php date_default_timezone_set('Asia/Jakarta'); ?>
-    <p style="margin-top: 20px; font-size: 11px;">Dicetak pada: <?= date('d-m-Y H:i:s') ?></p>
-    <p style="font-size: 11px;">Dicetak oleh: <?= esc($nama_user ?? 'User Tidak Diketahui') ?></p>
+    <p style="margin-top: 20px; font-size: 12px;"><strong>Penjelasan Pemilihan Supplier:</strong></p>
+    <p style="text-align: justify; font-size: 12px;">
+    Supplier yang terpilih memperoleh nilai akhir tertinggi berdasarkan metode <em>Simple Multi Attribute Rating Technique (SMART)</em>.
+    Pemilihan dilakukan berdasarkan berbagai kriteria dan parameter yang relevan.
+</p>
+
+<ul style="font-size: 12px;">
+    <?php if (!empty($parameter_terbaik)): ?>
+        <?php foreach ($parameter_terbaik as $pt): ?>
+        <li><strong><?= esc($pt['nama_kriteria']) ?></strong>: <?= esc($pt['keterangan']) ?></li>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <li>Data parameter terbaik tidak tersedia.</li>
+    <?php endif; ?>
+</ul>
+
+<p style="text-align: justify; font-size: 12px;">
+    Dengan mempertimbangkan aspek-aspek di atas, supplier ini terbukti unggul dalam berbagai hal seperti variasi bahan yang ditawarkan, kualitas produk, ketepatan waktu pengiriman, serta harga yang kompetitif. Oleh karena itu, supplier ini layak dipilih sebagai mitra terbaik dalam pengadaan bahan pembuatan bunga papan.
+</p>
 
 </body>
 </html>
